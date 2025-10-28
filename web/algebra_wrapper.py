@@ -302,7 +302,16 @@ class Algebra:
             outputs = ctypes.create_string_buffer(256)
             count = _lib.algebra_get_plus_one_rule_outputs(self._handle, i, outputs, 256)
             if count > 0:
-                output_list = [chr(outputs[j]) for j in range(count)]
+                # outputs is a buffer, need to decode bytes properly
+                output_list = []
+                for j in range(count):
+                    char_val = outputs[j]
+                    if isinstance(char_val, bytes):
+                        output_list.append(char_val.decode('utf-8'))
+                    elif isinstance(char_val, int):
+                        output_list.append(chr(char_val))
+                    else:
+                        output_list.append(str(char_val))
                 plus_one_rule.append(output_list)
             else:
                 plus_one_rule.append([])
