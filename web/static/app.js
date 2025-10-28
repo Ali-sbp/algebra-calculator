@@ -2,6 +2,27 @@ const API_URL = window.location.origin;
 let calculationHistory = [];
 const MAX_HISTORY = 20;
 
+// Dark mode toggle
+document.addEventListener('DOMContentLoaded', () => {
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const savedMode = localStorage.getItem('darkMode');
+    
+    if (savedMode === 'enabled') {
+        document.body.classList.add('dark-mode');
+        darkModeToggle.checked = true;
+    }
+    
+    darkModeToggle.addEventListener('change', () => {
+        if (darkModeToggle.checked) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('darkMode', 'enabled');
+        } else {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('darkMode', 'disabled');
+        }
+    });
+});
+
 // Initialize algebra
 async function initAlgebra() {
     const bits = document.getElementById('bits').value;
