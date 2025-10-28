@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finite Algebra Calculator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Finite Algebra Calculator</h1>
+        
+        <div class="main-layout">
+            <!-- Calculator Section -->
+            <div class="calculator-section">
+                <h2>Calculator</h2>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="boundedMode"> Enable Bounded Mode
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="bits">Number of elements:</label>
+                    <input type="number" id="bits" value="8" min="2" max="26">
+                </div>
+                
+                <div class="form-group">
+                    <label for="rule">+1 Rule:</label>
+                    <input type="text" id="rule" placeholder="e.g., bhgecea{d,f}">
+                    <button onclick="initAlgebra()">Initialize</button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="num1">Number 1:</label>
+                    <input type="text" id="num1" placeholder="e.g., bc">
+                </div>
+                
+                <div class="form-group">
+                    <label for="num2">Number 2:</label>
+                    <input type="text" id="num2" placeholder="e.g., de">
+                </div>
+                
+                <div class="form-group">
+                    <label>Result:</label>
+                    <input type="text" id="result" readonly>
+                </div>
+                
+                <div class="button-grid">
+                    <button onclick="calculate('add')">+</button>
+                    <button onclick="calculate('subtract')">−</button>
+                    <button onclick="calculate('multiply')">×</button>
+                    <button onclick="calculate('divide')">÷</button>
+                    <button onclick="calculate('power')">^</button>
+                    <button onclick="calculate('mod')">mod</button>
+                    <button onclick="calculate('gcd')">NOD</button>
+                    <button onclick="calculate('lcm')">NOC</button>
+                </div>
+                
+                <button onclick="clearAll()" class="clear-btn">Clear All</button>
+            </div>
+            
+            <!-- History Section -->
+            <div class="history-section">
+                <h2>History</h2>
+                <div id="history" class="history-list"></div>
+                <button onclick="clearHistory()" class="clear-btn">Clear History</button>
+            </div>
+            
+            <!-- Tables Section -->
+            <div class="tables-section">
+                <h2>Tables</h2>
+                <div class="table-controls">
+                    <select id="tableType">
+                        <option value="addition">Addition Table</option>
+                        <option value="multiplication">Multiplication Table</option>
+                        <option value="hasse">Hasse Diagram</option>
+                    </select>
+                    <button onclick="showTable()">Show</button>
+                </div>
+                <div id="tableDisplay"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
