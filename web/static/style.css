@@ -34,13 +34,88 @@ h2 {
 .main-layout {
     display: grid;
     grid-template-columns: 30% 15% 55%;
-    gap: 20px;
+    gap: 10px;
+    height: calc(100vh - 100px);
 }
 
-.calculator-section, .history-section, .tables-section {
+.calculator-section, .history-section, .right-container {
+    background: white;
     padding: 15px;
-    background: #f9f9f9;
     border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow-y: auto;
+}
+
+.right-container {
+    display: flex;
+    gap: 10px;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+}
+
+.tables-section {
+    flex: 3;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.hasse-widget {
+    flex: 1;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow-y: auto;
+    min-width: 250px;
+    max-width: 350px;
+}
+
+.hasse-widget h3 {
+    text-align: center;
+    margin-top: 0;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.table-display {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+.table-display:last-of-type {
+    margin-bottom: 0;
+}
+
+.table-display label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.table-display select {
+    margin-bottom: 10px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-height: 30px;
+}
+
+.table-content {
+    flex: 1;
+    overflow: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    background: #f9f9f9;
 }
 
 .form-group {

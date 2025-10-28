@@ -1,37 +1,36 @@
-// Global state
-let history = [];
-const API_URL = '';  // Same origin
+const API_URL = window.location.origin;
+let calculationHistory = [];
+const MAX_HISTORY = 20;
 
 // Initialize algebra
 async function initAlgebra() {
     const bits = document.getElementById('bits').value;
     const rule = document.getElementById('rule').value;
     
-    if (!rule) {
-        showError('Please enter a +1 rule');
-        return;
-    }
-    
     try {
         const response = await fetch(`${API_URL}/api/init`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ bits: parseInt(bits), rule })
+            body: JSON.stringify({ bits, rule })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            showSuccess(`Algebra Z${bits} initialized successfully!`);
+            showSuccess(data.message);
+            // Update both table displays and Hasse diagram
+            updateTable1();
+            updateTable2();
+            updateHasse();
         } else {
             showError(data.error);
         }
     } catch (error) {
-        showError('Failed to initialize algebra: ' + error);
+        showError('Failed to initialize: ' + error);
     }
 }
 
-// Perform calculation
+// Calculate operation
 async function calculate(operation) {
     const num1 = document.getElementById('num1').value;
     const num2 = document.getElementById('num2').value;
@@ -51,14 +50,20 @@ async function calculate(operation) {
         const data = await response.json();
         
         if (data.success) {
-            let result = data.result;
-            if (data.remainder) {
-                result += ` (remainder: ${data.remainder})`;
+            let resultText = data.result;
+            if (data.remainder !== undefined) {
+                resultText += ` (remainder: ${data.remainder})`;
             }
-            document.getElementById('result').value = result;
+            document.getElementById('result').value = resultText;
+            document.getElementById('result').style.color = '';
             
             // Add to history
-            addToHistory(num1, num2, operation, result);
+            const opSymbols = {
+                'add': '+', 'subtract': '-', 'multiply': '×', 
+                'divide': '÷', 'power': '^', 'mod': 'mod',
+                'gcd': 'NOD', 'lcm': 'NOC'
+            };
+            addToHistory(num1, num2, opSymbols[operation] || operation, resultText);
         } else {
             showError(data.error);
         }
@@ -69,23 +74,11 @@ async function calculate(operation) {
 
 // Add to history
 function addToHistory(num1, num2, operation, result) {
-    const opSymbol = {
-        'add': '+',
-        'subtract': '−',
-        'multiply': '×',
-        'divide': '÷',
-        'power': '^',
-        'mod': 'mod',
-        'gcd': 'NOD',
-        'lcm': 'NOC'
-    }[operation] || operation;
-    
     const entry = { num1, num2, operation, result };
-    history.unshift(entry);
+    calculationHistory.unshift(entry);
     
-    // Limit to 20 entries
-    if (history.length > 20) {
-        history.pop();
+    if (calculationHistory.length > MAX_HISTORY) {
+        calculationHistory.pop();
     }
     
     updateHistoryDisplay();
@@ -94,30 +87,16 @@ function addToHistory(num1, num2, operation, result) {
 // Update history display
 function updateHistoryDisplay() {
     const historyDiv = document.getElementById('history');
-    historyDiv.innerHTML = '';
-    
-    history.forEach((entry, index) => {
-        const opSymbol = {
-            'add': '+',
-            'subtract': '−',
-            'multiply': '×',
-            'divide': '÷',
-            'power': '^',
-            'mod': 'mod',
-            'gcd': 'NOD',
-            'lcm': 'NOC'
-        }[entry.operation] || entry.operation;
-        
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.textContent = `[${index + 1}] ${entry.num1} ${opSymbol} ${entry.num2} = ${entry.result}`;
-        div.onclick = () => loadFromHistory(entry);
-        historyDiv.appendChild(div);
-    });
+    historyDiv.innerHTML = calculationHistory.map((entry, index) => 
+        `<div class="history-item" onclick="loadFromHistory(${index})">
+            ${entry.num1} ${entry.operation} ${entry.num2} = ${entry.result}
+        </div>`
+    ).join('');
 }
 
-// Load entry from history
-function loadFromHistory(entry) {
+// Load from history
+function loadFromHistory(index) {
+    const entry = calculationHistory[index];
     document.getElementById('num1').value = entry.num1;
     document.getElementById('num2').value = entry.num2;
     document.getElementById('result').value = entry.result;
@@ -125,27 +104,43 @@ function loadFromHistory(entry) {
 
 // Clear history
 function clearHistory() {
-    history = [];
+    calculationHistory = [];
     updateHistoryDisplay();
 }
 
-// Clear all inputs
+// Clear all
 function clearAll() {
     document.getElementById('bits').value = '8';
     document.getElementById('rule').value = '';
     document.getElementById('num1').value = '';
     document.getElementById('num2').value = '';
     document.getElementById('result').value = '';
-    document.getElementById('tableDisplay').innerHTML = '';
+    document.getElementById('boundedMode').checked = false;
+    clearHistory();
+    document.getElementById('table1Display').innerHTML = '';
+    document.getElementById('table2Display').innerHTML = '';
+    document.getElementById('hasseDisplay').innerHTML = '';
 }
 
-// Show table
-async function showTable() {
-    const tableType = document.getElementById('tableType').value;
+// Update table 1
+async function updateTable1() {
+    const tableType = document.getElementById('table1Type').value;
+    await updateTableDisplay('table1Display', tableType);
+}
+
+// Update table 2
+async function updateTable2() {
+    const tableType = document.getElementById('table2Type').value;
+    await updateTableDisplay('table2Display', tableType);
+}
+
+// Update table display
+async function updateTableDisplay(displayId, tableType) {
+    const display = document.getElementById(displayId);
     
     try {
         if (tableType === 'hasse') {
-            await showHasse();
+            await displayHasseInTable(display);
             return;
         }
         
@@ -153,29 +148,33 @@ async function showTable() {
         const data = await response.json();
         
         if (data.success) {
-            displayTable(data.elements, data.table, tableType);
+            displayTable(display, data.elements, data.table, tableType);
         } else {
-            showError(data.error);
+            display.innerHTML = `<div style="color: red;">${data.error}</div>`;
         }
     } catch (error) {
-        showError('Failed to load table: ' + error);
+        display.innerHTML = `<div style="color: red;">Failed to load: ${error}</div>`;
     }
 }
 
 // Display table
-function displayTable(elements, tableData, type) {
-    const display = document.getElementById('tableDisplay');
-    
+function displayTable(display, elements, tableData, tableType) {
     let html = '<table>';
-    html += '<tr><th>' + type + '</th>';
-    elements.forEach(e => html += `<th>${e}</th>`);
+    
+    // Header row
+    html += '<tr><th>' + tableType.replace('_', ' ').toUpperCase() + '</th>';
+    elements.forEach(elem => {
+        html += `<th>${elem}</th>`;
+    });
     html += '</tr>';
     
-    elements.forEach(row => {
-        html += `<tr><th>${row}</th>`;
-        elements.forEach(col => {
-            const entry = tableData.find(t => t.a === row && t.b === col);
-            html += `<td>${entry ? entry.result : '-'}</td>`;
+    // Data rows
+    elements.forEach(a => {
+        html += `<tr><th>${a}</th>`;
+        elements.forEach(b => {
+            const entry = tableData.find(item => item.a === a && item.b === b);
+            const result = entry ? entry.result : '';
+            html += `<td>${result}</td>`;
         });
         html += '</tr>';
     });
@@ -184,34 +183,72 @@ function displayTable(elements, tableData, type) {
     display.innerHTML = html;
 }
 
-// Show Hasse diagram
-async function showHasse() {
+// Display Hasse in table display
+async function displayHasseInTable(display) {
     try {
         const response = await fetch(`${API_URL}/api/hasse`);
         const data = await response.json();
         
         if (data.success) {
-            displayHasse(data.positions);
+            const hasseData = data.positions;
+            if (!hasseData || !hasseData.element_positions) {
+                display.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">No Hasse Diagram<br>Initialize algebra first</div>';
+                return;
+            }
+            
+            // Show text representation for table displays
+            const positions = hasseData.element_positions;
+            const groups = {};
+            for (const [elem, pos] of Object.entries(positions)) {
+                if (!groups[pos]) groups[pos] = [];
+                groups[pos].push(elem);
+            }
+            
+            const sortedPos = Object.keys(groups).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            let html = '<div style="padding: 20px; font-family: Courier;">';
+            sortedPos.forEach(pos => {
+                const elems = groups[pos].sort();
+                const displayText = elems.length > 1 ? `{${elems.join(',')}}` : elems[0];
+                html += `<div style="margin: 10px 0;"><strong>(${pos})</strong> ${displayText}</div>`;
+            });
+            html += '<div style="margin: 10px 0;">→ (cycle back to a)</div>';
+            html += '</div>';
+            
+            display.innerHTML = html;
         } else {
-            showError(data.error);
+            display.innerHTML = `<div style="color: red;">${data.error}</div>`;
         }
     } catch (error) {
-        showError('Failed to load Hasse diagram: ' + error);
+        display.innerHTML = `<div style="color: red;">Failed to load: ${error}</div>`;
     }
 }
 
-// Display Hasse diagram with SVG visualization (like Qt version)
-function displayHasse(hasseData) {
-    const display = document.getElementById('tableDisplay');
+// Update Hasse widget
+async function updateHasse() {
+    try {
+        const response = await fetch(`${API_URL}/api/hasse`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayHasseWidget(data.positions);
+        }
+    } catch (error) {
+        console.error('Failed to load Hasse diagram:', error);
+    }
+}
+
+// Display Hasse diagram in widget
+function displayHasseWidget(hasseData) {
+    const display = document.getElementById('hasseDisplay');
     
     if (!hasseData || !hasseData.element_positions) {
-        display.innerHTML = '<div class="hasse-empty">No Hasse Diagram<br>Enter +1 rule to display</div>';
+        display.innerHTML = '<div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">No Hasse Diagram<br><br>Enter +1 rule to display</div>';
         return;
     }
     
     const positions = hasseData.element_positions;
     const plusOneRule = hasseData.plus_one_rule || [];
-    const elements = hasseData.elements || [];
     
     // Group elements by position
     const groups = {};
@@ -222,7 +259,7 @@ function displayHasse(hasseData) {
         maxPosition = Math.max(maxPosition, parseInt(pos));
     }
     
-    // Sort elements in each group by their source index in the rule
+    // Sort elements in each group
     const elementSourceIndex = {};
     plusOneRule.forEach((outputs, inputIdx) => {
         outputs.forEach(outputElem => {
@@ -240,17 +277,16 @@ function displayHasse(hasseData) {
         });
     }
     
-    // Sort positions
     const sortedPos = Object.keys(groups).sort((a, b) => parseInt(a) - parseInt(b));
     
     // SVG dimensions
-    const width = 400;
-    const height = Math.max(500, sortedPos.length * 100);
-    const nodeRadius = 25;
-    const horizontalSpacing = 60;
+    const width = 280;
+    const height = Math.max(400, sortedPos.length * 80);
+    const nodeRadius = 20;
+    const horizontalSpacing = 50;
     const centerX = width / 2;
-    const marginTop = 30;
-    const marginBottom = 30;
+    const marginTop = 20;
+    const marginBottom = 20;
     const verticalStep = (height - marginTop - marginBottom) / (sortedPos.length + 1);
     
     // Calculate node positions
@@ -268,9 +304,9 @@ function displayHasse(hasseData) {
     // Build SVG
     let svg = `<svg width="${width}" height="${height}" style="background: #1e1e1e; border-radius: 8px;">`;
     
-    // Draw edges based on +1 rule
+    // Draw edges
     plusOneRule.forEach((outputs, inputIdx) => {
-        const inputElem = String.fromCharCode(97 + inputIdx); // 'a' + inputIdx
+        const inputElem = String.fromCharCode(97 + inputIdx);
         
         if (!nodePositions[inputElem]) return;
         
@@ -283,12 +319,10 @@ function displayHasse(hasseData) {
             const toPos = nodePositions[outputElem];
             const outputPosition = toPos.pos;
             
-            // Skip cycle edges (from top to bottom)
             if (inputPosition === maxPosition && outputPosition === 0) {
                 return;
             }
             
-            // Calculate line endpoints on circle edges
             const dx = toPos.x - fromPos.x;
             const dy = toPos.y - fromPos.y;
             const angle = Math.atan2(dy, dx);
@@ -302,7 +336,7 @@ function displayHasse(hasseData) {
         });
     });
     
-    // Draw cycle indicator (dashed arrow from top back to bottom)
+    // Draw cycle indicator
     if (sortedPos.length > 1) {
         const topElems = groups[sortedPos[sortedPos.length - 1]];
         const bottomElems = groups[sortedPos[0]];
@@ -313,17 +347,7 @@ function displayHasse(hasseData) {
         const topPos = nodePositions[topElem];
         const bottomPos = nodePositions[bottomElem];
         
-        // Draw horizontal line connecting all top elements if multiple
-        if (topElems.length > 1) {
-            const leftElem = topElems[0];
-            const rightElem = topElems[topElems.length - 1];
-            const leftPos = nodePositions[leftElem];
-            const rightPos = nodePositions[rightElem];
-            
-            svg += `<line x1="${leftPos.x}" y1="${leftPos.y}" x2="${rightPos.x}" y2="${rightPos.y}" stroke="white" stroke-width="1" stroke-dasharray="5,5"/>`;
-        }
-        
-        const curveOffset = 50;
+        const curveOffset = 40;
         const topRight = { x: topPos.x + curveOffset, y: topPos.y };
         const bottomRight = { x: bottomPos.x + curveOffset, y: bottomPos.y };
         
@@ -331,30 +355,25 @@ function displayHasse(hasseData) {
         svg += `<line x1="${topRight.x}" y1="${topRight.y}" x2="${bottomRight.x}" y2="${bottomRight.y}" stroke="white" stroke-width="1" stroke-dasharray="5,5"/>`;
         svg += `<line x1="${bottomRight.x}" y1="${bottomRight.y}" x2="${bottomPos.x}" y2="${bottomPos.y}" stroke="white" stroke-width="1" stroke-dasharray="5,5"/>`;
         
-        // Arrow head
-        svg += `<polygon points="${bottomPos.x + 10},${bottomPos.y} ${bottomPos.x + 5},${bottomPos.y - 5} ${bottomPos.x + 5},${bottomPos.y + 5}" fill="white"/>`;
+        svg += `<polygon points="${bottomPos.x + 8},${bottomPos.y} ${bottomPos.x + 3},${bottomPos.y - 4} ${bottomPos.x + 3},${bottomPos.y + 4}" fill="white"/>`;
     }
     
     // Draw nodes
     for (const [elem, nodePos] of Object.entries(nodePositions)) {
         const { x, y, pos } = nodePos;
         
-        // Circle
         svg += `<circle cx="${x}" cy="${y}" r="${nodeRadius}" fill="#6496c8" stroke="white" stroke-width="2"/>`;
+        svg += `<text x="${x}" y="${y + 4}" text-anchor="middle" fill="white" font-size="14" font-weight="bold">${elem}</text>`;
         
-        // Element label
-        svg += `<text x="${x}" y="${y + 5}" text-anchor="middle" fill="white" font-size="16" font-weight="bold">${elem}</text>`;
-        
-        // Position number (to the left, only show once per level)
         const groupElems = groups[pos];
         if (elem === groupElems[0]) {
-            svg += `<text x="${x - nodeRadius - 35}" y="${y + 5}" text-anchor="end" fill="lightgray" font-size="12">(${pos})</text>`;
+            svg += `<text x="${x - nodeRadius - 25}" y="${y + 4}" text-anchor="end" fill="lightgray" font-size="10">(${pos})</text>`;
         }
     }
     
     svg += '</svg>';
     
-    display.innerHTML = `<div class="hasse-container">${svg}</div>`;
+    display.innerHTML = svg;
 }
 
 // Bounded mode toggle
@@ -389,5 +408,5 @@ function showSuccess(message) {
     const result = document.getElementById('result');
     result.value = message;
     result.style.color = '#388e3c';
-    setTimeout(() => { result.value = ''; result.style.color = ''; }, 3000);
+    setTimeout(() => { result.value = ''; result.style.color = ''; }, 2000);
 }

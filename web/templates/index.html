@@ -11,7 +11,7 @@
         <h1>Finite Algebra Calculator</h1>
         
         <div class="main-layout">
-            <!-- Calculator Section -->
+            <!-- Calculator Section (30%) -->
             <div class="calculator-section">
                 <h2>Calculator</h2>
                 
@@ -61,29 +61,55 @@
                 <button onclick="clearAll()" class="clear-btn">Clear All</button>
             </div>
             
-            <!-- History Section -->
+            <!-- History Section (15%) -->
             <div class="history-section">
                 <h2>History</h2>
                 <div id="history" class="history-list"></div>
                 <button onclick="clearHistory()" class="clear-btn">Clear History</button>
             </div>
             
-            <!-- Tables Section -->
-            <div class="tables-section">
-                <h2>Tables</h2>
-                <div class="table-controls">
-                    <select id="tableType">
-                        <option value="addition">Addition Table</option>
-                        <option value="multiplication">Multiplication Table</option>
-                        <option value="subtraction">Subtraction Table</option>
-                        <option value="division">Division Table</option>
-                        <option value="addition_carry">Addition Carry Table</option>
-                        <option value="multiplication_carry">Multiplication Carry Table</option>
-                        <option value="hasse">Hasse Diagram</option>
-                    </select>
-                    <button onclick="showTable()">Show</button>
+            <!-- Right Container: Tables + Hasse (55%) -->
+            <div class="right-container">
+                <!-- Tables Section (75% of right side) -->
+                <div class="tables-section">
+                    <h2>Tables & Diagrams</h2>
+                    
+                    <!-- Display 1 -->
+                    <div class="table-display">
+                        <label for="table1Type">Display 1:</label>
+                        <select id="table1Type" onchange="updateTable1()">
+                            <option value="hasse">Hasse Diagram</option>
+                            <option value="addition" selected>Addition Table</option>
+                            <option value="multiplication">Multiplication Table</option>
+                            <option value="subtraction">Subtraction Table</option>
+                            <option value="division">Division Table</option>
+                            <option value="addition_carry">Addition Carry Table</option>
+                            <option value="multiplication_carry">Multiplication Carry Table</option>
+                        </select>
+                        <div id="table1Display" class="table-content"></div>
+                    </div>
+                    
+                    <!-- Display 2 -->
+                    <div class="table-display">
+                        <label for="table2Type">Display 2:</label>
+                        <select id="table2Type" onchange="updateTable2()">
+                            <option value="hasse">Hasse Diagram</option>
+                            <option value="addition">Addition Table</option>
+                            <option value="multiplication">Multiplication Table</option>
+                            <option value="subtraction">Subtraction Table</option>
+                            <option value="division">Division Table</option>
+                            <option value="addition_carry" selected>Addition Carry Table</option>
+                            <option value="multiplication_carry">Multiplication Carry Table</option>
+                        </select>
+                        <div id="table2Display" class="table-content"></div>
+                    </div>
                 </div>
-                <div id="tableDisplay"></div>
+                
+                <!-- Hasse Diagram Widget (25% of right side) -->
+                <div class="hasse-widget">
+                    <h3>Hasse Diagram</h3>
+                    <div id="hasseDisplay"></div>
+                </div>
             </div>
         </div>
     </div>

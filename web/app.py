@@ -32,7 +32,7 @@ def init_algebra():
         return jsonify({
             'success': True,
             'message': f'Algebra Z{bits} initialized',
-            'elements': algebra.elements,
+            'elements': algebra.get_elements(),
             'hasse': algebra.get_hasse_diagram_data()
         })
     except Exception as e:
@@ -113,7 +113,7 @@ def get_table(table_type):
         
         return jsonify({
             'success': True,
-            'elements': algebra.elements,
+            'elements': algebra.get_elements(),
             'table': table_data
         })
     except Exception as e:
