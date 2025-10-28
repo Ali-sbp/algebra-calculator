@@ -174,6 +174,28 @@ table th {
     font-family: 'Courier New', monospace;
 }
 
+.hasse-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    overflow: auto;
+    max-height: 600px;
+}
+
+.hasse-container svg {
+    display: block;
+    margin: 0 auto;
+}
+
+.hasse-empty {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
 .error {
     color: #d32f2f;
     padding: 10px;

@@ -7,191 +7,284 @@ import ctypes
 import os
 from pathlib import Path
 
+# Load the shared library
+lib_path = os.path.join(os.path.dirname(__file__), '..', 'libalgebra.so')
+if not os.path.exists(lib_path):
+    raise RuntimeError(f"Shared library not found at {lib_path}. Please compile with: g++ -shared -fPIC -O3 algebra.cpp algebra_c_wrapper.cpp -o libalgebra.so -std=c++17")
+
+_lib = ctypes.CDLL(lib_path)
+
+# Define function signatures
+_lib.algebra_create.argtypes = [ctypes.c_int]
+_lib.algebra_create.restype = ctypes.c_void_p
+
+_lib.algebra_destroy.argtypes = [ctypes.c_void_p]
+_lib.algebra_destroy.restype = None
+
+_lib.algebra_set_plus_one_rule.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+_lib.algebra_set_plus_one_rule.restype = None
+
+_lib.algebra_set_bounded_mode.argtypes = [ctypes.c_void_p, ctypes.c_bool]
+_lib.algebra_set_bounded_mode.restype = None
+
+_lib.algebra_get_bounded_mode.argtypes = [ctypes.c_void_p]
+_lib.algebra_get_bounded_mode.restype = ctypes.c_bool
+
+_lib.algebra_add_arithmetic.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_subtract_arithmetic.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_multiply_arithmetic.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_divide_arithmetic.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_power_arithmetic.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_mod_arithmetic.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_gcd_arithmetic.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_lcm_arithmetic.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_format_result.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+
+_lib.algebra_get_element_count.argtypes = [ctypes.c_void_p]
+_lib.algebra_get_element_count.restype = ctypes.c_int
+
+_lib.algebra_get_element.argtypes = [ctypes.c_void_p, ctypes.c_int]
+_lib.algebra_get_element.restype = ctypes.c_char
+
+_lib.algebra_get_element_position.argtypes = [ctypes.c_void_p, ctypes.c_char]
+_lib.algebra_get_element_position.restype = ctypes.c_int
+
+_lib.algebra_add_single.argtypes = [ctypes.c_void_p, ctypes.c_char, ctypes.c_char]
+_lib.algebra_add_single.restype = ctypes.c_char
+
+_lib.algebra_multiply_single.argtypes = [ctypes.c_void_p, ctypes.c_char, ctypes.c_char]
+_lib.algebra_multiply_single.restype = ctypes.c_char
+
+_lib.algebra_subtract_single.argtypes = [ctypes.c_void_p, ctypes.c_char, ctypes.c_char]
+_lib.algebra_subtract_single.restype = ctypes.c_char
+
+_lib.algebra_divide_single.argtypes = [ctypes.c_void_p, ctypes.c_char, ctypes.c_char]
+_lib.algebra_divide_single.restype = ctypes.c_char
+
+_lib.algebra_get_addition_carry.argtypes = [ctypes.c_void_p, ctypes.c_char, ctypes.c_char]
+_lib.algebra_get_addition_carry.restype = ctypes.c_int
+
+_lib.algebra_get_multiplication_carry.argtypes = [ctypes.c_void_p, ctypes.c_char, ctypes.c_char]
+_lib.algebra_get_multiplication_carry.restype = ctypes.c_int
+
+_lib.algebra_get_plus_one_rule_size.argtypes = [ctypes.c_void_p]
+_lib.algebra_get_plus_one_rule_size.restype = ctypes.c_int
+
+_lib.algebra_get_plus_one_rule_outputs.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_get_plus_one_rule_outputs.restype = ctypes.c_int
+
+_lib.algebra_get_max_value.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_get_max_value.restype = None
+
+_lib.algebra_get_min_value.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+_lib.algebra_get_min_value.restype = None
+
+
 class Algebra:
     """Python interface to C++ Algebra calculator"""
     
     def __init__(self, bits=8):
         self.bits = bits
-        self.plus_one_rule = ""
-        self.elements = [chr(ord('a') + i) for i in range(bits)]
-        self.element_position = {}
+        self._handle = _lib.algebra_create(bits)
         self.initialized = False
-        self.bounded_mode = False
-        
+    
+    def __del__(self):
+        if hasattr(self, '_handle') and self._handle:
+            _lib.algebra_destroy(self._handle)
+    
     def set_plus_one_rule(self, rule):
-        """Parse and set the +1 rule"""
-        self.plus_one_rule = rule
-        self.element_position = {}
-        
-        # Parse rule: "bhgecea{d,f}" or "b-h-g-e-c-e-a-{d,f}"
-        clean_rule = rule.replace('-', '').replace(' ', '')
-        
-        position = 0
-        i = 0
-        while i < len(clean_rule):
-            if clean_rule[i] == '{':
-                # Multi-element: {d,f}
-                i += 1
-                elements_at_pos = []
-                while i < len(clean_rule) and clean_rule[i] != '}':
-                    if clean_rule[i].isalpha():
-                        elements_at_pos.append(clean_rule[i])
-                    i += 1
-                for elem in elements_at_pos:
-                    self.element_position[elem] = position
-                i += 1  # skip '}'
-                position += 1
-            elif clean_rule[i].isalpha():
-                # Single element
-                self.element_position[clean_rule[i]] = position
-                position += 1
-                i += 1
-            else:
-                i += 1
-        
+        """Set the +1 rule"""
+        _lib.algebra_set_plus_one_rule(self._handle, rule.encode('utf-8'))
         self.initialized = True
-        
-    def add_with_carry(self, a, b):
-        """Add two elements with carry tracking"""
-        if not self.initialized:
-            return 'a', 0
-            
-        result = a
-        steps = self.element_position.get(b, 0)
-        carry = 0
-        cycle_length = len(set(self.element_position.values()))
-        
-        for _ in range(steps):
-            current_pos = self.element_position.get(result, 0)
-            next_elem = None
-            
-            # Find next element (element at position + 1)
-            for elem, pos in self.element_position.items():
-                if pos == (current_pos + 1) % cycle_length:
-                    next_elem = elem
-                    break
-            
-            if next_elem is None:
-                break
-                
-            next_pos = self.element_position[next_elem]
-            if next_pos < current_pos:
-                carry += 1
-                
-            result = next_elem
-            
-        return result, carry
     
-    def add(self, a, b):
-        """Add two elements"""
-        result, _ = self.add_with_carry(a, b)
-        return result
+    def set_bounded_mode(self, enabled):
+        """Enable/disable bounded mode"""
+        _lib.algebra_set_bounded_mode(self._handle, enabled)
     
-    def multiply(self, a, b):
-        """Multiply two elements"""
-        if a == 'a' or b == 'a':
-            return 'a'
-        if b == 'b':
-            return a
-        if a == 'b':
-            return b
-            
-        # a * b = add a to itself b times
-        result = 'a'
-        b_pos = self.element_position.get(b, 0)
-        for _ in range(b_pos):
-            result = self.add(result, a)
-        return result
+    def get_bounded_mode(self):
+        """Check if bounded mode is enabled"""
+        return _lib.algebra_get_bounded_mode(self._handle)
     
-    def add_arithmetic(self, num1, num2):
+    def add_arithmetic(self, a, b):
         """Add two multi-digit numbers"""
-        # Handle negative numbers
-        if num1.startswith('-') and num2.startswith('-'):
-            return '-' + self.add_arithmetic(num1[1:], num2[1:])
-        if num1.startswith('-'):
-            return self.subtract_arithmetic(num2, num1[1:])
-        if num2.startswith('-'):
-            return self.subtract_arithmetic(num1, num2[1:])
-        
-        # Add positives
-        result = []
-        carry = 0
-        i, j = len(num1) - 1, len(num2) - 1
-        
-        while i >= 0 or j >= 0 or carry > 0:
-            digit_a = num1[i] if i >= 0 else 'a'
-            digit_b = num2[j] if j >= 0 else 'a'
-            
-            # Add digits
-            sum_digit, c1 = self.add_with_carry(digit_a, digit_b)
-            
-            # Add carry
-            for _ in range(carry):
-                sum_digit, c2 = self.add_with_carry(sum_digit, 'b')
-                c1 += c2
-            
-            result.append(sum_digit)
-            carry = c1
-            i -= 1
-            j -= 1
-        
-        return ''.join(reversed(result))
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_add_arithmetic(self._handle, a.encode('utf-8'), b.encode('utf-8'), result, 1024)
+        return result.value.decode('utf-8')
     
-    def subtract_arithmetic(self, num1, num2):
+    def subtract_arithmetic(self, a, b):
         """Subtract two multi-digit numbers"""
-        # Simplified implementation
-        # For full implementation, see the C++ version
-        return "a"  # Placeholder
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_subtract_arithmetic(self._handle, a.encode('utf-8'), b.encode('utf-8'), result, 1024)
+        return result.value.decode('utf-8')
     
-    def multiply_arithmetic(self, num1, num2):
+    def multiply_arithmetic(self, a, b):
         """Multiply two multi-digit numbers"""
-        if num1.startswith('-') and num2.startswith('-'):
-            return self.multiply_arithmetic(num1[1:], num2[1:])
-        if num1.startswith('-'):
-            return '-' + self.multiply_arithmetic(num1[1:], num2)
-        if num2.startswith('-'):
-            return '-' + self.multiply_arithmetic(num1, num2[1:])
-        
-        # Simplified - multiply using repeated addition
-        result = 'a'
-        for _ in range(len(num2)):
-            # This is a simplified version
-            pass
-        return result
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_multiply_arithmetic(self._handle, a.encode('utf-8'), b.encode('utf-8'), result, 1024)
+        return result.value.decode('utf-8')
     
-    def divide_arithmetic(self, num1, num2):
+    def divide_arithmetic(self, a, b):
         """Divide two multi-digit numbers, return (quotient, remainder)"""
-        # Simplified
-        return "a", "a"
+        quotient = ctypes.create_string_buffer(1024)
+        remainder = ctypes.create_string_buffer(1024)
+        _lib.algebra_divide_arithmetic(self._handle, a.encode('utf-8'), b.encode('utf-8'), 
+                                      quotient, 1024, remainder, 1024)
+        return quotient.value.decode('utf-8'), remainder.value.decode('utf-8')
     
-    def format_result(self, result):
+    def power_arithmetic(self, base, exp):
+        """Calculate base^exp"""
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_power_arithmetic(self._handle, base.encode('utf-8'), exp.encode('utf-8'), result, 1024)
+        return result.value.decode('utf-8')
+    
+    def mod_arithmetic(self, a, b):
+        """Calculate a mod b"""
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_mod_arithmetic(self._handle, a.encode('utf-8'), b.encode('utf-8'), result, 1024)
+        return result.value.decode('utf-8')
+    
+    def gcd_arithmetic(self, a, b):
+        """Calculate GCD/NOD of a and b"""
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_gcd_arithmetic(self._handle, a.encode('utf-8'), b.encode('utf-8'), result, 1024)
+        return result.value.decode('utf-8')
+    
+    def lcm_arithmetic(self, a, b):
+        """Calculate LCM/NOC of a and b"""
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_lcm_arithmetic(self._handle, a.encode('utf-8'), b.encode('utf-8'), result, 1024)
+        return result.value.decode('utf-8')
+    
+    def format_result(self, input_str):
         """Format result with position notation"""
-        if result == "∅":
-            return "∅"
-        
-        if result.startswith('-'):
-            return '-' + self.format_result(result[1:])
-        
-        formatted = []
-        for char in result:
-            pos = self.element_position.get(char, 0)
-            # Find all elements at this position
-            elems_at_pos = [e for e, p in self.element_position.items() if p == pos]
-            if len(elems_at_pos) > 1:
-                formatted.append('{' + ','.join(sorted(elems_at_pos)) + '}')
-            else:
-                formatted.append(char)
-        
-        return ''.join(formatted)
+        result = ctypes.create_string_buffer(2048)
+        _lib.algebra_format_result(self._handle, input_str.encode('utf-8'), result, 2048)
+        return result.value.decode('utf-8')
+    
+    def get_elements(self):
+        """Get list of all elements"""
+        count = _lib.algebra_get_element_count(self._handle)
+        return [chr(_lib.algebra_get_element(self._handle, i)) for i in range(count)]
+    
+    def get_element_position(self, element):
+        """Get position of an element"""
+        return _lib.algebra_get_element_position(self._handle, ord(element))
+    
+    def add_single(self, a, b):
+        """Add two single elements"""
+        return chr(_lib.algebra_add_single(self._handle, ord(a), ord(b)))
+    
+    def multiply_single(self, a, b):
+        """Multiply two single elements"""
+        return chr(_lib.algebra_multiply_single(self._handle, ord(a), ord(b)))
+    
+    def subtract_single(self, a, b):
+        """Subtract two single elements"""
+        return chr(_lib.algebra_subtract_single(self._handle, ord(a), ord(b)))
+    
+    def divide_single(self, a, b):
+        """Divide two single elements"""
+        return chr(_lib.algebra_divide_single(self._handle, ord(a), ord(b)))
+    
+    def get_addition_carry(self, a, b):
+        """Get carry for addition of two elements"""
+        return _lib.algebra_get_addition_carry(self._handle, ord(a), ord(b))
+    
+    def get_multiplication_carry(self, a, b):
+        """Get carry for multiplication of two elements"""
+        return _lib.algebra_get_multiplication_carry(self._handle, ord(a), ord(b))
+    
+    def get_max_value(self):
+        """Get maximum value for bounded mode"""
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_get_max_value(self._handle, result, 1024)
+        return result.value.decode('utf-8')
+    
+    def get_min_value(self):
+        """Get minimum value for bounded mode"""
+        result = ctypes.create_string_buffer(1024)
+        _lib.algebra_get_min_value(self._handle, result, 1024)
+        return result.value.decode('utf-8')
     
     def get_addition_table(self):
         """Generate addition table"""
+        elements = self.get_elements()
         table = {}
-        for a in self.elements:
-            for b in self.elements:
-                table[(a, b)] = self.add(a, b)
+        for a in elements:
+            for b in elements:
+                table[(a, b)] = self.add_single(a, b)
+        return table
+    
+    def get_multiplication_table(self):
+        """Generate multiplication table"""
+        elements = self.get_elements()
+        table = {}
+        for a in elements:
+            for b in elements:
+                table[(a, b)] = self.multiply_single(a, b)
+        return table
+    
+    def get_subtraction_table(self):
+        """Generate subtraction table"""
+        elements = self.get_elements()
+        table = {}
+        for a in elements:
+            for b in elements:
+                table[(a, b)] = self.subtract_single(a, b)
+        return table
+    
+    def get_division_table(self):
+        """Generate division table"""
+        elements = self.get_elements()
+        table = {}
+        for a in elements:
+            for b in elements:
+                table[(a, b)] = self.divide_single(a, b)
+        return table
+    
+    def get_addition_carry_table(self):
+        """Generate addition carry table"""
+        elements = self.get_elements()
+        table = {}
+        for a in elements:
+            for b in elements:
+                table[(a, b)] = self.get_addition_carry(a, b)
+        return table
+    
+    def get_multiplication_carry_table(self):
+        """Generate multiplication carry table"""
+        elements = self.get_elements()
+        table = {}
+        for a in elements:
+            for b in elements:
+                table[(a, b)] = self.get_multiplication_carry(a, b)
         return table
     
     def get_hasse_diagram_data(self):
-        """Get Hasse diagram structure"""
-        return self.element_position
+        """Get Hasse diagram structure with element positions and plus one rule"""
+        elements = self.get_elements()
+        positions = {}
+        for elem in elements:
+            pos = self.get_element_position(elem)
+            if pos >= 0:
+                positions[elem] = pos
+        
+        # Get plus one rule
+        rule_size = _lib.algebra_get_plus_one_rule_size(self._handle)
+        plus_one_rule = []
+        
+        for i in range(rule_size):
+            outputs = ctypes.create_string_buffer(256)
+            count = _lib.algebra_get_plus_one_rule_outputs(self._handle, i, outputs, 256)
+            if count > 0:
+                output_list = [chr(outputs[j]) for j in range(count)]
+                plus_one_rule.append(output_list)
+            else:
+                plus_one_rule.append([])
+        
+        return {
+            'element_positions': positions,
+            'plus_one_rule': plus_one_rule,
+            'elements': elements
+        }
+

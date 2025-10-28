@@ -89,6 +89,16 @@ def get_table(table_type):
     try:
         if table_type == 'addition':
             table = algebra.get_addition_table()
+        elif table_type == 'multiplication':
+            table = algebra.get_multiplication_table()
+        elif table_type == 'subtraction':
+            table = algebra.get_subtraction_table()
+        elif table_type == 'division':
+            table = algebra.get_division_table()
+        elif table_type == 'addition_carry':
+            table = algebra.get_addition_carry_table()
+        elif table_type == 'multiplication_carry':
+            table = algebra.get_multiplication_carry_table()
         else:
             return jsonify({'success': False, 'error': 'Unknown table type'}), 400
         
@@ -130,9 +140,21 @@ def set_bounded():
     
     data = request.json
     enabled = data.get('enabled', False)
-    algebra.bounded_mode = enabled
+    algebra.set_bounded_mode(enabled)
     
-    return jsonify({'success': True, 'bounded': enabled})
+    response = {'success': True, 'bounded': enabled}
+    
+    # If enabling bounded mode and algebra is initialized, return max/min values
+    if enabled and algebra.initialized:
+        try:
+            max_val = algebra.format_result(algebra.get_max_value())
+            min_val = algebra.format_result(algebra.get_min_value())
+            response['max_value'] = max_val
+            response['min_value'] = min_val
+        except:
+            pass
+    
+    return jsonify(response)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
