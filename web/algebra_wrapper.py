@@ -164,35 +164,60 @@ class Algebra:
     def get_elements(self):
         """Get list of all elements"""
         count = _lib.algebra_get_element_count(self._handle)
-        return [chr(_lib.algebra_get_element(self._handle, i)) for i in range(count)]
+        elements = []
+        for i in range(count):
+            elem_byte = _lib.algebra_get_element(self._handle, i)
+            # c_char returns bytes in Python 3
+            if isinstance(elem_byte, bytes):
+                elements.append(elem_byte.decode('utf-8'))
+            else:
+                elements.append(chr(elem_byte))
+        return elements
     
     def get_element_position(self, element):
         """Get position of an element"""
-        return _lib.algebra_get_element_position(self._handle, ord(element))
+        elem_byte = element.encode('utf-8')[0] if isinstance(element, str) else element
+        return _lib.algebra_get_element_position(self._handle, elem_byte)
     
     def add_single(self, a, b):
         """Add two single elements"""
-        return chr(_lib.algebra_add_single(self._handle, ord(a), ord(b)))
+        a_byte = a.encode('utf-8')[0] if isinstance(a, str) else a
+        b_byte = b.encode('utf-8')[0] if isinstance(b, str) else b
+        result = _lib.algebra_add_single(self._handle, a_byte, b_byte)
+        return result.decode('utf-8') if isinstance(result, bytes) else chr(result)
     
     def multiply_single(self, a, b):
         """Multiply two single elements"""
-        return chr(_lib.algebra_multiply_single(self._handle, ord(a), ord(b)))
+        a_byte = a.encode('utf-8')[0] if isinstance(a, str) else a
+        b_byte = b.encode('utf-8')[0] if isinstance(b, str) else b
+        result = _lib.algebra_multiply_single(self._handle, a_byte, b_byte)
+        return result.decode('utf-8') if isinstance(result, bytes) else chr(result)
     
     def subtract_single(self, a, b):
         """Subtract two single elements"""
-        return chr(_lib.algebra_subtract_single(self._handle, ord(a), ord(b)))
+        a_byte = a.encode('utf-8')[0] if isinstance(a, str) else a
+        b_byte = b.encode('utf-8')[0] if isinstance(b, str) else b
+        result = _lib.algebra_subtract_single(self._handle, a_byte, b_byte)
+        return result.decode('utf-8') if isinstance(result, bytes) else chr(result)
     
     def divide_single(self, a, b):
         """Divide two single elements"""
-        return chr(_lib.algebra_divide_single(self._handle, ord(a), ord(b)))
+        a_byte = a.encode('utf-8')[0] if isinstance(a, str) else a
+        b_byte = b.encode('utf-8')[0] if isinstance(b, str) else b
+        result = _lib.algebra_divide_single(self._handle, a_byte, b_byte)
+        return result.decode('utf-8') if isinstance(result, bytes) else chr(result)
     
     def get_addition_carry(self, a, b):
         """Get carry for addition of two elements"""
-        return _lib.algebra_get_addition_carry(self._handle, ord(a), ord(b))
+        a_byte = a.encode('utf-8')[0] if isinstance(a, str) else a
+        b_byte = b.encode('utf-8')[0] if isinstance(b, str) else b
+        return _lib.algebra_get_addition_carry(self._handle, a_byte, b_byte)
     
     def get_multiplication_carry(self, a, b):
         """Get carry for multiplication of two elements"""
-        return _lib.algebra_get_multiplication_carry(self._handle, ord(a), ord(b))
+        a_byte = a.encode('utf-8')[0] if isinstance(a, str) else a
+        b_byte = b.encode('utf-8')[0] if isinstance(b, str) else b
+        return _lib.algebra_get_multiplication_carry(self._handle, a_byte, b_byte)
     
     def get_max_value(self):
         """Get maximum value for bounded mode"""
