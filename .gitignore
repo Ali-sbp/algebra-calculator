@@ -11,6 +11,7 @@ qrc_*
 Makefile
 .qmake.stash
 bu/
+kr images/
 
 # IDE files
 .vscode/
