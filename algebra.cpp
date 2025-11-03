@@ -59,6 +59,9 @@ void Algebra::setPlusOneRule(const std::string& rule) {
     buildSubtractionTable();
     buildDivisionTable();
 }
+// TODO : prepolnenie : DONE , a/a = min - max : DONE
+// TODO : DONE  
+// n != Zn , always 8
 /*
 void Algebra::BuildHasse() {
     // Build the Hasse diagram positions by following the +b chain starting
@@ -1215,10 +1218,26 @@ std::string Algebra::divideArithmetic(const std::string& a, const std::string& b
         return true; // Equal
     };
     
-    // Check for division by zero
+    // Special case: a/a (0/0) should return range [min - max]
+    if (isZero(aAbs) && isZero(bAbs)) {
+        std::string minVal = getMinValue();
+        std::string maxVal = getMaxValue();
+        remainder = std::string(1, additiveIdentity);  // No remainder (zero)
+        return "[" + minVal + " - " + maxVal + "]";
+    }
+    
+    // Check for division by zero (any non-zero number / 0)
     if (isZero(bAbs)) {
         remainder = "∅";  // Empty set symbol for undefined
         return "∅";  // Return empty set symbol for division by zero
+    }
+    
+    // Special case: x/x, -x/x, or x/-x (same non-zero values) should return range [min - max]
+    if (aAbs == bAbs) {
+        std::string minVal = getMinValue();
+        std::string maxVal = getMaxValue();
+        remainder = std::string(1, additiveIdentity);  // No remainder
+        return "[" + minVal + " - " + maxVal + "]";
     }
     
     // If a < b, quotient is 0, remainder is a
@@ -1481,9 +1500,11 @@ std::string Algebra::lcmArithmetic(const std::string& a, const std::string& b) c
 }
 
 std::string Algebra::getMaxValue() const {
-    // Maximum value is bits repetitions of the element with highest position
+    // Maximum value is limit repetitions of the element with highest position
     // Find element with maximum position in elementPosition map
     if (elements.empty() || elementPosition.empty()) return "";
+    // TODO : DONE, hard coded boundry 8 bits
+    const int limit = 8;  // Hardcoded limit for bounded mode
     
     char maxElem = additiveIdentity;
     int maxPos = -1;
@@ -1495,7 +1516,7 @@ std::string Algebra::getMaxValue() const {
         }
     }
     
-    return std::string(bits, maxElem);
+    return std::string(limit, maxElem);
 }
 
 std::string Algebra::getMinValue() const {
@@ -1546,9 +1567,8 @@ std::string Algebra::clampToBounds(const std::string& value) const {
     // Check if value exceeds bounds
     if (!exceedsBounds(value)) return value;
     
-    // Clamp to max or min
-    bool isNeg = !value.empty() && value[0] == '-';
-    return isNeg ? getMinValue() : getMaxValue();
+    // Return overflow message instead of clamping to max/min
+    return "преполнение";
 }
 
 

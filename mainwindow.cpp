@@ -110,7 +110,7 @@ void MainWindow::createCalculatorSection(QWidget* parent, QVBoxLayout* layout)
     layout->addSpacing(10);
     
     // Connect checkbox signal
-    connect(boundedModeCheckBox, &QCheckBox::stateChanged, this, &MainWindow::onBoundedModeChanged);
+    connect(boundedModeCheckBox, &QCheckBox::checkStateChanged, this, &MainWindow::onBoundedModeChanged);
     
     // Number of bits input
     QLabel* bitsLabel = new QLabel("Number of elements:");
