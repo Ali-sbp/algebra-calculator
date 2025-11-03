@@ -574,6 +574,13 @@ char Algebra::power(char base, char exponent) const {
     // Calculate base^exponent
     // exponent's position determines how many times to multiply
     
+    // Check if base and exponent are valid elements
+    if (elementPosition.find(base) == elementPosition.end() ||
+        elementPosition.find(exponent) == elementPosition.end()) {
+        // Invalid input, return additive identity
+        return additiveIdentity;
+    }
+    
     // Handle special cases
     if (exponent == additiveIdentity) {
         // x^0 = multiplicative identity (b)
@@ -1413,6 +1420,11 @@ std::string Algebra::powerArithmetic(const std::string& base, const std::string&
     while (!isZero(remainingExp) && iterations < maxIterations) {
         result = multiplyArithmetic(result, baseAbs);
         
+        // Check if multiplication caused overflow/special result
+        if (result == "преполнение" || result == "∅") {
+            return result;  // Return immediately without further processing
+        }
+        
         // Decrement remainingExp by 1
         remainingExp = subtractArithmetic(remainingExp, std::string(1, multiplicativeIdentity));
         
@@ -1425,15 +1437,19 @@ std::string Algebra::powerArithmetic(const std::string& base, const std::string&
     }
     
     // Apply sign if base was negative and exponent is odd
-    if (baseNeg) {
+    // But only if result is not a special string
+    if (baseNeg && result != "преполнение" && result != "∅") {
         // Check if exponent is odd by checking the last digit
-        int expLastPos = elementPosition.at(exponent[exponent.length() - 1]);
-        if (expLastPos % 2 == 1) {
-            result = "-" + result;
+        char lastExpChar = exponent[exponent.length() - 1];
+        if (elementPosition.find(lastExpChar) != elementPosition.end()) {
+            int expLastPos = elementPosition.at(lastExpChar);
+            if (expLastPos % 2 == 1) {
+                result = "-" + result;
+            }
         }
     }
     
-    return clampToBounds(result);
+    return result;  // Result already processed by multiplyArithmetic's clampToBounds
 }
 
 std::string Algebra::gcdArithmetic(const std::string& a, const std::string& b) const {

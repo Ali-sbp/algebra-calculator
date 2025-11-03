@@ -62,6 +62,14 @@ def calculate():
             result = algebra.multiply_arithmetic(num1, num2)
         elif operation == 'divide':
             result, remainder = algebra.divide_arithmetic(num1, num2)
+        elif operation == 'power':
+            result = algebra.power_arithmetic(num1, num2)
+        elif operation == 'mod':
+            result = algebra.mod_arithmetic(num1, num2)
+        elif operation == 'gcd':
+            result = algebra.gcd_arithmetic(num1, num2)
+        elif operation == 'lcm':
+            result = algebra.lcm_arithmetic(num1, num2)
         else:
             return jsonify({'success': False, 'error': 'Unknown operation'}), 400
         
