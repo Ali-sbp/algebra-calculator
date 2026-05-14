@@ -30,6 +30,12 @@ setup-qt-vscode.sh
 # tex
 kr.tex
 kr.cpp 
+Отчет - Анари .pdf
 Отчет-old .pdf
 КР Отчет- Анари.pdf
+
+# web 
+
+web/__pycache__
+web/venv
 
